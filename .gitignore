@@ -1,0 +1,11 @@
+# Byte-compiled / optimized / DLL files
+*.html
+__pycache__/
+# Distribution / packaging
+.Python
+# virtualenv
+env/
+# PyCharm
+.idea/
+# Log files
+*.log

@@ -1,0 +1,5 @@
+{
+  "stock_ticker": ["GOOGL", "AMZN"],
+  "stock_index_ticker": ["BCB/7809", "NASDAQOMX/COMP"],
+  "features": ["Adj. Open", "Adj. High", "Adj. Low", "Adj. Close", "Adj. Volume"]
+}
