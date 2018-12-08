@@ -9,25 +9,51 @@ class PreprocessData(object):
 
 	def __init__(self, **kwargs):
 		self.stock_data_info = GetData.get_stock_data_info()
+		self.feature_list = self.stock_data_info["features"]
+		self.original_df_dict = {}
+		self.preprocessed_data_dict = {}
+		self.ticker_symbol_list = []
 
-	def preprocess_data(self, df):
-		logger.info("Preprocessing data")
-		processed_data_list = []
-		df_list = [df.iloc[:, i:i + 12] for i in range(0, df.shape[1], 12)]
-		feature_list = self.stock_data_info["features"]
-		logger.debug("Feature list = {}".format(feature_list))
-		for df in df_list:
-			ticker_symbol = df.columns[0].split(" ")[0]
-			processed_feature_list = list(map(
-				lambda x, y: "{} - {}".format(x, y), [ticker_symbol] * len(feature_list), feature_list))
-			df = df[processed_feature_list]
-			df["{} - HL_PCT".format(ticker_symbol)] = (df["{} - Adj. High".format(ticker_symbol)] - df["{} - Adj. Low".format(
-				ticker_symbol)]) / df["{} - Adj. Close".format(ticker_symbol)] * 100.0
-			df["{} - PCT_change".format(ticker_symbol)] = (df["{} - Adj. Close".format(
-				ticker_symbol)] - df["{} - Adj. Open".format(
-				ticker_symbol)]) / df["{} - Adj. Open".format(ticker_symbol)] * 100.0
-			df = df[["{} - Adj. Close".format(ticker_symbol), "{} - HL_PCT".format(ticker_symbol),
-							 "{} - PCT_change".format(ticker_symbol), "{} - Adj. Volume".format(ticker_symbol)]]
+	def get_df_for_each_ticker(self, df):
+		df_col_nos = list(range(0, df.shape[1], 12))
+		for ticker_symbol, df_col_no in zip(self.ticker_symbol_list, df_col_nos):
+			self.original_df_dict[ticker_symbol] = df.iloc[:, df_col_no:df_col_no + 12]
+
+	def get_high_to_low_pcnt_change(self, df, ticker_symbol):
+		df["{} - HL_PCT".format(ticker_symbol)] = (df["{} - Adj. High".format(ticker_symbol)] - df["{} - Adj. Low".format(
+			ticker_symbol)]) / df["{} - Adj. Close".format(ticker_symbol)] * 100.0
+		return df
+
+	def get_open_to_close_pcnt_change(self, df, ticker_symbol):
+		df["{} - PCT_change".format(ticker_symbol)] = (df["{} - Adj. Close".format(
+			ticker_symbol)] - df["{} - Adj. Open".format(ticker_symbol)]) / df["{} - Adj. Open".format(
+			ticker_symbol)] * 100.0
+		return df
+
+	def preprocess_data(self, df, ticker_symbol_list):
+		self.ticker_symbol_list = ticker_symbol_list
+		logger.info("Pre-processing data")
+		# Extract data frames for each ticker from the original data frame and put it in a dictionary.
+		self.get_df_for_each_ticker(df)
+		# df_list = [df.iloc[:, i:i + 12] for i in range(0, df.shape[1], 12)]
+		useful_features = ["Adj. Close", "HL_PCT", "PCT_change", "Adj. Volume"]
+		logger.debug("Feature list = {}".format(self.feature_list))
+		for ticker_symbol, df in self.original_df_dict.items():
+			preprocessed_feature_list = list(map(
+				lambda x, y: "{} - {}".format(x, y), [ticker_symbol] * len(self.feature_list), self.feature_list))
+			df = df[preprocessed_feature_list]
+			df = self.get_high_to_low_pcnt_change(df, ticker_symbol)
+			df = self.get_open_to_close_pcnt_change(df, ticker_symbol)
+			# df["{} - HL_PCT".format(ticker_symbol)] = (df["{} - Adj. High".format(ticker_symbol)] - df["{} - Adj. Low".format(
+			# 	ticker_symbol)]) / df["{} - Adj. Close".format(ticker_symbol)] * 100.0
+			# df["{} - PCT_change".format(ticker_symbol)] = (df["{} - Adj. Close".format(
+			# 	ticker_symbol)] - df["{} - Adj. Open".format(ticker_symbol)]) / df["{} - Adj. Open".format(
+			# 	ticker_symbol)] * 100.0
+			preprocessed_feature_list = list(map(
+				lambda x, y: "{} - {}".format(x, y), [ticker_symbol] * len(useful_features), useful_features))
+			# df = df[["{} - Adj. Close".format(ticker_symbol), "{} - HL_PCT".format(ticker_symbol), "{} - PCT_change".format(
+			# 	ticker_symbol), "{} - Adj. Volume".format(ticker_symbol)]]
+			df = df[preprocessed_feature_list]
 			forecast_col = "{} - Adj. Close".format(ticker_symbol)
 			df.fillna(value=-99999, inplace=True)
 			forecast_out = int(math.ceil(0.01 * len(df)))
@@ -38,5 +64,5 @@ class PreprocessData(object):
 			X = X[:-forecast_out]
 			df.dropna(inplace=True)
 			y = np.array(df["label"])
-			processed_data_list.append([X, X_forecast, y])
-		return processed_data_list, df_list
+			self.preprocessed_data_dict[ticker_symbol] = [X, X_forecast, y]
+		return self.preprocessed_data_dict, self.original_df_dict

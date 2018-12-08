@@ -1,5 +1,6 @@
 from matplotlib import style
 import matplotlib.pyplot as plt
+import os
 import sys
 from buildmodels import BuildModels
 from getdata import GetData
@@ -13,30 +14,34 @@ class StockPricePrediction(object):
   def __init__(self):
     pass
 
-  def plot_forecast(self, forecast_df_list):
+  def plot_forecast(self, forecast_df_dict):
     logger.info("Plotting forecast")
-    for model_name, df_list in forecast_df_list.items():
-      for df in df_list:
-        ticker_symbol = df.columns[0].split(" ")[0]
+    current_dir = os.getcwd()
+    for model_name, df_dict in forecast_df_dict.items():
+      for ticker_symbol, df in df_dict.items():
         style.use("ggplot")
-        df["{} - Adj. Close".format(ticker_symbol)].plot()
+        df["{} - Adj. Close".format(ticker_symbol)].plot(label="Adj. Close Values for {} for {} model".format(
+          ticker_symbol, model_name), x="Date", y="Adj. Close stock prices")
         df["{} - Forecast".format(ticker_symbol)].plot()
         # plt.legend(loc=4)
         plt.xlabel("Date")
         plt.ylabel("Price")
         plt.title("Forecast for {}".format(model_name))
-        plt.show()
+        # fig = plt.figure()
+        plt.savefig("{}/stock_price_plots/{}_{}.png".format(current_dir, model_name, ticker_symbol.replace("/", "_")))
+        plt.clf()
 
   def main(self):
-    logger.info("------------------Started Stock Price Prediction------------------")
+    logger.info("------------------Started Stock Price Prediction-----------------")
     get_data = GetData(api_key=sys.argv[1])
     preprocess_data = PreprocessData()
     build_models = BuildModels()
     test_models = TestModels()
-    df = get_data.get_stock_data(update_data=False)
-    preprocessed_data_list, df_list = preprocess_data.preprocess_data(df)
-    models_dict = build_models.build_models(["Linear Regression", "SVR", "Decision Tree"], preprocessed_data_list)
-    forecast_df_dict = test_models.test_models(models_dict, preprocessed_data_list, df_list)
+    df, stock_ticker_list = get_data.get_stock_data(update_data=False)
+    preprocessed_data_dict, original_df_dict = preprocess_data.preprocess_data(df, stock_ticker_list)
+    models_dict, model_scores_dict = build_models.build_models(["Linear Regression", "SVR", "Decision Tree"],
+                                                               preprocessed_data_dict)
+    forecast_df_dict = test_models.test_models(models_dict, preprocessed_data_dict, original_df_dict)
     self.plot_forecast(forecast_df_dict)
 
 

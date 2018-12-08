@@ -8,12 +8,14 @@ from setuplogger import logger
 class BuildModels(object):
 
 	def __init__(self, **kwargs):
-		pass
+		self.models_dict = {}
+		self.model_scores_dict = {}
 
-	def build_model(self, model_name, preprocessed_data_list):
+	def build_model(self, model_name, preprocessed_data_dict):
 		logger.info("Building model using {}.".format(model_name))
-		model_list = []
-		for preprocessed_data in preprocessed_data_list:
+		model_dict = {}
+		model_scores_dict = {}
+		for ticker_symbol, preprocessed_data in preprocessed_data_dict.items():
 			[X, X_forecast, y] = preprocessed_data
 			X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 			if model_name == "Linear Regression":
@@ -27,13 +29,22 @@ class BuildModels(object):
 				model.fit(X_train, y_train)
 			else:
 				raise Exception("Model = {} is not supported".format(model_name))
-			confidence = model.score(X_test, y_test)
-			logger.info("-------Confidence score for {} model = {}".format(model_name, confidence))
-			model_list.append(model)
-		return model_list
+			confidence_score = model.score(X_test, y_test)
+			logger.info("-------Confidence score for {} model for {} = {}".format(model_name, ticker_symbol, confidence_score))
+			model_dict[ticker_symbol] = model
+			model_scores_dict[ticker_symbol] = confidence_score
+		return model_dict
 
-	def build_models(self, model_names, preprocessed_data_list):
-		models_dict = {}
+	def build_models(self, model_names, preprocessed_data_dict):
 		for model_name in model_names:
-			models_dict[model_name] = self.build_model(model_name, preprocessed_data_list)
-		return models_dict
+			model_dict, model_scores_dict = self.build_model(model_name, preprocessed_data_dict)
+			self.models_dict[model_name] = model_dict
+			self.model_scores_dict[model_name] = model_scores_dict
+		return self.models_dict, self.model_scores_dict
+
+	def get_built_models(self):
+		if self.models_dict:
+			return self.models_dict
+		else:
+			logger.info("No models found. Run build_models first and then call this method.")
+			exit(1)

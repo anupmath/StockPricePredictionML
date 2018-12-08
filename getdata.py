@@ -22,7 +22,7 @@ class GetData(object):
       df.to_csv("{}".format(self.stock_data_path))
     df = pd.read_csv("{}".format(self.stock_data_path), index_col="Date")
     logger.debug("df.shape = {}".format(df.shape))
-    return df
+    return df, stock_ticker_list
 
   @staticmethod
   def get_stock_data_info():

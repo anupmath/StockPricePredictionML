@@ -9,3 +9,5 @@ env/
 .idea/
 # Log files
 *.log
+# Plots
+stock_price_plots/*.png
