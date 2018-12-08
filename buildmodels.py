@@ -33,7 +33,7 @@ class BuildModels(object):
 			logger.info("-------Confidence score for {} model for {} = {}".format(model_name, ticker_symbol, confidence_score))
 			model_dict[ticker_symbol] = model
 			model_scores_dict[ticker_symbol] = confidence_score
-		return model_dict
+		return model_dict, model_scores_dict
 
 	def build_models(self, model_names, preprocessed_data_dict):
 		for model_name in model_names:
