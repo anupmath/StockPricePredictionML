@@ -17,6 +17,8 @@ class StockPricePrediction(object):
   def plot_forecast(self, forecast_df_dict):
     logger.info("Plotting forecast")
     current_dir = os.getcwd()
+    os.mkdir("{}/stock_price_plots".format(current_dir)) if not os.path.exists("{}/stock_price_plots".format(
+      current_dir)) else None
     for model_name, df_dict in forecast_df_dict.items():
       for ticker_symbol, df in df_dict.items():
         style.use("ggplot")
