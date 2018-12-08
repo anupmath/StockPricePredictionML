@@ -22,13 +22,12 @@ class StockPricePrediction(object):
     for model_name, df_dict in forecast_df_dict.items():
       for ticker_symbol, df in df_dict.items():
         style.use("ggplot")
-        df["{} - Adj. Close".format(ticker_symbol)].plot(label="Adj. Close Values for {} for {} model".format(
-          ticker_symbol, model_name), x="Date", y="Adj. Close stock prices")
+        df["{} - Adj. Close".format(ticker_symbol)].plot()
         df["{} - Forecast".format(ticker_symbol)].plot()
         # plt.legend(loc=4)
         plt.xlabel("Date")
         plt.ylabel("Price")
-        plt.title("Forecast for {}".format(model_name))
+        plt.title("Forecast for {} model for {}".format(model_name, ticker_symbol))
         # fig = plt.figure()
         plt.savefig("{}/stock_price_plots/{}_{}.png".format(current_dir, model_name, ticker_symbol.replace("/", "_")))
         plt.clf()
