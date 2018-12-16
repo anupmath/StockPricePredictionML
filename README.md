@@ -27,6 +27,6 @@ Predict future stock prices using the historical stock data by applying differen
 
 ### Project setup instructions
 
-• pip install -r requirements.txt
+• pip3 install -r requirements.txt
 
-• python3 stockprediction.py <quandl-api-key>
+• python3 stockpriceprediction.py <quandl-api-key>
