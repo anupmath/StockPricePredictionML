@@ -9,20 +9,25 @@ class PreprocessData(object):
 
 	def __init__(self):
 		self.stock_data_info = GetData.get_stock_data_info()
-		self.feature_list = self.stock_data_info["features"]
 		self.original_df_dict = {}
 		self.preprocessed_data_dict = {}
 		self.ticker_symbol_list = []
 
 	def get_df_for_each_ticker(self, df):
-		df_date = df["Date"].copy(deep=True)
+		# Copy the date column to another dataframe
+		df_date = df.iloc[:, 0].copy(deep=True)
 		df_date = pd.DataFrame(df_date.values, columns=["Date"])
-		#Drop date from original dataframe for easier separation of data for all stocks
-		df = df.drop(["Date"], 1)
-		df_col_nos = list(range(0, df.shape[1], 12))
-		for ticker_symbol, df_col_no in zip(self.ticker_symbol_list, df_col_nos):
-			df_with_date = pd.concat([df_date.iloc[:, 0], df.iloc[:, df_col_no:df_col_no + 12]], axis=1)
-			self.original_df_dict[ticker_symbol] = df_with_date
+		# Drop date from original dataframe for easier separation stock data based on ticker symbols
+		df = df.drop(columns=["Unnamed: 0"])
+		for ticker_symbol in self.ticker_symbol_list:
+			feature_list = self.get_feature_list(ticker_symbol.split("/")[0])
+			ticker_symbol_columns = list(map(
+				lambda x, y: "{} - {}".format(x, y), [ticker_symbol] * len(feature_list), feature_list))
+			self.original_df_dict[ticker_symbol] = pd.concat([df_date.iloc[:, 0], df[ticker_symbol_columns]], axis=1)
+
+	def get_feature_list(self, ticker_domain):
+		feature_list = self.stock_data_info["features_list"][ticker_domain]
+		return feature_list
 
 	@staticmethod
 	def get_high_to_low_pcnt_change(df, ticker_symbol):
@@ -42,27 +47,33 @@ class PreprocessData(object):
 		logger.info("----------------Pre-processing data----------------")
 		# Extract data frames for each ticker from the original data frame and put it in a dictionary.
 		self.get_df_for_each_ticker(df)
-		# df_list = [df.iloc[:, i:i + 12] for i in range(0, df.shape[1], 12)]
 		useful_features = ["Adj. Close", "HL_PCT", "PCT_change", "Adj. Volume"]
-		logger.debug("Feature list = {}".format(self.feature_list))
 		for ticker_symbol, original_df in self.original_df_dict.items():
+			ticker_domain = ticker_symbol.split("/")[0]
+			feature_list = self.get_feature_list(ticker_domain)
+			logger.debug("Feature list for {} = {}".format(ticker_symbol, feature_list))
 			preprocessed_feature_list = list(map(
-				lambda x, y: "{} - {}".format(x, y), [ticker_symbol] * len(self.feature_list), self.feature_list))
-			original_df = original_df[preprocessed_feature_list]
-			original_df = self.get_high_to_low_pcnt_change(original_df, ticker_symbol)
-			original_df = self.get_open_to_close_pcnt_change(original_df, ticker_symbol)
-			preprocessed_feature_list = list(map(
-				lambda x, y: "{} - {}".format(x, y), [ticker_symbol] * len(useful_features), useful_features))
-			original_df = original_df[preprocessed_feature_list]
-			forecast_col = "{} - Adj. Close".format(ticker_symbol)
+				lambda x, y: "{} - {}".format(x, y), [ticker_symbol] * len(feature_list), feature_list))
+			preprocessed_df = original_df[preprocessed_feature_list].copy(deep=True)
+			if ticker_domain in ["WIKI"]:
+				preprocessed_df = self.get_high_to_low_pcnt_change(preprocessed_df, ticker_symbol)
+				preprocessed_df = self.get_open_to_close_pcnt_change(preprocessed_df, ticker_symbol)
+				preprocessed_feature_list = list(map(
+					lambda x, y: "{} - {}".format(x, y), [ticker_symbol] * len(useful_features), useful_features))
+				preprocessed_df = preprocessed_df[preprocessed_feature_list]
+			forecast_col_labels = {
+				"WIKI": "{} - Adj. Close".format(ticker_symbol),
+				"BCB": "{} - Value".format(ticker_symbol),
+				"NASDAQOMX": "{} - Index Value".format(ticker_symbol)
+			}
 			# df.fillna(value=-99999, inplace=True)
-			original_df.dropna(inplace=True)
-			forecast_out = int(math.ceil(0.01 * len(original_df)))
-			original_df["label"] = original_df[forecast_col].shift(-forecast_out)
-			X = np.array(original_df.drop(["label"], 1))
+			preprocessed_df.dropna(inplace=True)
+			forecast_out = int(math.ceil(0.01 * len(preprocessed_df)))
+			preprocessed_df["label"] = preprocessed_df[forecast_col_labels[ticker_domain]].shift(-forecast_out)
+			X = np.array(preprocessed_df.drop(["label"], 1))
 			X_forecast = X[-forecast_out:]
 			X = X[:-forecast_out]
-			y = np.array(original_df["label"])
+			y = np.array(preprocessed_df["label"])
 			y = y[:-forecast_out]
 			self.preprocessed_data_dict[ticker_symbol] = [X, X_forecast, y]
 		return self.preprocessed_data_dict, self.original_df_dict

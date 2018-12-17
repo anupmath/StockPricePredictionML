@@ -1,5 +1,11 @@
 {
-  "stock_ticker": ["AAPL", "GOOGL", "AMZN","MSFT", "FB", "XOM", "CVX", "AMGN", "JNJ", "F"],
-  "stock_index_ticker": ["BCB/7809", "NASDAQOMX/COMP"],
-  "features": ["Adj. Open", "Adj. High", "Adj. Low", "Adj. Close", "Adj. Volume"]
+  "stock_tickers": {
+    "WIKI": ["AAPL", "GOOGL", "AMZN","MSFT", "FB", "XOM", "CVX", "AMGN", "JNJ", "F"],
+    "BCB": ["7809"],
+    "NASDAQOMX": ["COMP"]},
+  "features_list": {
+    "WIKI":  ["Adj. Open", "Adj. High", "Adj. Low", "Adj. Close", "Adj. Volume"],
+    "BCB": ["Value"],
+    "NASDAQOMX": ["Index Value"]
+  }
 }

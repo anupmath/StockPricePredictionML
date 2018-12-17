@@ -1,7 +1,9 @@
+import numpy as np
+import os
+import pickle
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import cross_validate, cross_val_score, GridSearchCV, train_test_split, TimeSeriesSplit
-import numpy as np
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVR
@@ -14,6 +16,7 @@ class BuildModels(object):
 	def __init__(self):
 		self.built_models_dict = {}
 		self.model_scores_dict = {}
+		self.saved_models_dir = "saved_models"
 		# self.models_dict = {
 		# 	"Decision Tree Regressor": DecisionTreeRegressor(random_state=0, max_depth=5),
 		# 	"Linear Regression": LinearRegression(n_jobs=-1),
@@ -35,18 +38,26 @@ class BuildModels(object):
 			"SVR": {"kernel": ["rbf", "linear"], "degree": [1, 2, 3, 4], "gamma": ["auto_deprecated", "scale"]}
 		}
 
-	def build_model(self, model_name, preprocessed_data_dict):
+	def build_model(self, model_name, preprocessed_data_dict, force_build=False):
 		logger.info("----------------Building model using {}----------------".format(model_name))
 		model_dict = {}
 		model_scores_dict = {}
 		for ticker_symbol, preprocessed_data in preprocessed_data_dict.items():
 			[X, X_forecast, y] = preprocessed_data
-			# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-			tscv = TimeSeriesSplit(n_splits=5)
-			optimized_model, cv_scores = self.optimize_hyperparameters(X, y, self.parameters_dict[model_name], model_name, tscv)
-			model = make_pipeline(StandardScaler(), optimized_model)
-			X_train, X_test, y_train, y_test = self.get_train_and_test_data(X, y, cv_scores)
-			model.fit(X_train, y_train)
+			if force_build or not os.path.exists(
+					"{}/{}/{}_{}_model.pickle".format(os.getcwd(), self.saved_models_dir, model_name, ticker_symbol.replace("/", "_"))):
+				# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+				tscv = TimeSeriesSplit(n_splits=5)
+				optimized_model, cv_scores = self.optimize_hyperparameters(X, y, self.parameters_dict[model_name], model_name, tscv)
+				model = make_pipeline(StandardScaler(), optimized_model)
+				X_train, X_test, y_train, y_test = self.get_train_and_test_data(X, y, cv_scores)
+				model.fit(X_train, y_train)
+				self.save_to_pickle_file(model_name, ticker_symbol, model, "model")
+				self.save_to_pickle_file(model_name, ticker_symbol, cv_scores, "cv_scores")
+			else:
+				model = self.load_from_pickle_file(model_name, ticker_symbol, "model")
+				cv_scores = self.load_from_pickle_file(model_name, ticker_symbol, "cv_scores")
+				X_train, X_test, y_train, y_test = self.get_train_and_test_data(X, y, cv_scores)
 			confidence_score = model.score(X_test, y_test)
 			logger.info("Training score for {} = {}".format(ticker_symbol, confidence_score))
 			logger.debug("Cross validation scores for {} = {}".format(ticker_symbol, cv_scores["test_score"]))
@@ -104,3 +115,17 @@ class BuildModels(object):
 		optimized_model = GridSearchCV(estimator=model, param_grid=parameters_dict, cv=cv_iterator)
 		cv_score = cross_validate(optimized_model, X=X, y=y, cv=cv_iterator)
 		return optimized_model, cv_score
+
+	def save_to_pickle_file(self, model_name, ticker_symbol, obj_to_be_saved, obj_name):
+		logger.info("Saving {} model for {} to pickle file".format(model_name, ticker_symbol))
+		pickle_out = open("{}/{}_{}_{}.pickle".format(
+			self.saved_models_dir, model_name, ticker_symbol.replace("/", "_"), obj_name), "wb")
+		pickle.dump(obj_to_be_saved, pickle_out)
+		pickle_out.close()
+
+	def load_from_pickle_file(self, model_name, ticker_symbol, obj_name):
+		logger.info("Loading {} model for {} from pickle file".format(model_name, ticker_symbol))
+		pickle_in = open("{}/{}_{}_{}.pickle".format(
+			self.saved_models_dir, model_name, ticker_symbol.replace("/", "_"), obj_name), "rb")
+		loaded_obj = pickle.load(pickle_in)
+		return loaded_obj
