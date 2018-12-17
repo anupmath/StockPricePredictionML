@@ -5,15 +5,15 @@ from setuplogger import logger
 
 class Predictions(object):
 
-	def __init__(self, **kwargs):
+	def __init__(self):
 		self.test_result_dict = {}
 
 	@staticmethod
 	def get_forecast_set_df(df_copy, forecast_set, ticker_symbol):
 		df_copy["{} - Forecast".format(ticker_symbol)] = np.nan
 		logger.debug("type(df.iloc[-1].name = {}".format(type(df_copy.iloc[-1].name)))
-		last_date = datetime.datetime.strptime(df_copy.iloc[-1].name, "%Y-%m-%d") if isinstance(df_copy.iloc[-1].name, str) \
-			else df_copy.iloc[-1].name
+		last_date = datetime.datetime.strptime(df_copy.iloc[-1, 0], "%Y-%m-%d") \
+			if isinstance(df_copy.iloc[-1, 0], str) else df_copy.iloc[-1]
 		logger.debug("last_date = {}".format(last_date))
 		last_unix = last_date.timestamp()
 		one_day = 86400

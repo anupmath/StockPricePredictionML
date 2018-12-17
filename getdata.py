@@ -22,7 +22,8 @@ class GetData(object):
       logger.info("Writing stock data to {}".format(self.stock_data_path))
       df.to_csv("{}".format(self.stock_data_path))
     logger.info("Reading stock data from {}".format(self.stock_data_path))
-    df = pd.read_csv("{}".format(self.stock_data_path), index_col="Date")
+    # df = pd.read_csv("{}".format(self.stock_data_path), index_col="Date")
+    df = pd.read_csv("{}".format(self.stock_data_path))
     logger.debug("df.shape = {}".format(df.shape))
     return df, stock_ticker_list
 

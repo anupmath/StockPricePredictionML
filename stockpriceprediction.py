@@ -14,7 +14,7 @@ class StockPricePrediction(object):
   def __init__(self):
     pass
 
-  def plot_forecast(self, forecast_df_dict):
+  def plot_forecast(self, forecast_df_dict, original_df_dict):
     current_dir = os.getcwd()
     os.mkdir("{}/stock_price_plots".format(current_dir)) if not os.path.exists("{}/stock_price_plots".format(
       current_dir)) else None
@@ -23,9 +23,13 @@ class StockPricePrediction(object):
       for ticker_symbol, df in df_dict.items():
         logger.info("----------------Plotting stock prices for {}".format(ticker_symbol))
         style.use("ggplot")
-        df["{} - Adj. Close".format(ticker_symbol)].plot()
-        df["{} - Forecast".format(ticker_symbol)].plot()
-        # plt.legend(loc=4)
+        # original_df = original_df_dict[ticker_symbol]
+        # ax = original_df["{} - Adj. Close".format(ticker_symbol)].plot(color=['g'])
+        # df["{} - Adj. Close".format(ticker_symbol)].plot(color=['g'])
+        # df["{} - Forecast".format(ticker_symbol)].plot(color=['b'])
+        df.plot(x="Date", y=["{} - Adj. Close".format(ticker_symbol), "{} - Forecast".format(ticker_symbol)],
+                color=['g', 'b'])
+        plt.legend(loc="best")
         plt.xlabel("Date")
         plt.ylabel("Price")
         plt.title("Forecast for {} model for {}".format(model_name, ticker_symbol))
@@ -39,12 +43,13 @@ class StockPricePrediction(object):
     preprocess_data = PreprocessData()
     build_models = BuildModels()
     forecast_prices = Predictions()
-    df, stock_ticker_list = get_data.get_stock_data(update_data=True)
+    df, stock_ticker_list = get_data.get_stock_data(update_data=False)
     preprocessed_data_dict, original_df_dict = preprocess_data.preprocess_data(df, stock_ticker_list)
-    models_dict, model_scores_dict = build_models.build_models(
-      ["Linear Regression", "Decision Tree", "Random Forest Regressor"], preprocessed_data_dict)
+    models_list = ["Linear Regression", "Decision Tree Regressor", "Random Forest Regressor"]
+    # models_list = ["Random Forest Regressor"]
+    models_dict, model_scores_dict = build_models.build_models(models_list, preprocessed_data_dict)
     forecast_df_dict = forecast_prices.make_predictions(models_dict, preprocessed_data_dict, original_df_dict)
-    self.plot_forecast(forecast_df_dict)
+    self.plot_forecast(forecast_df_dict, original_df_dict)
 
 
 if __name__ == "__main__":
