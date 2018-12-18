@@ -3,7 +3,7 @@ import logging
 
 
 logger_name = "stock_price_prediction"
-# create logger for stock price prediction project'
+# create logger for stock price prediction project
 logger = logging.getLogger("{}".format(logger_name))
 logger.setLevel(logging.DEBUG)
 # create file handler which logs debug messages

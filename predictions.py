@@ -5,11 +5,26 @@ from setuplogger import logger
 
 class Predictions(object):
 
+	"""
+	This class uses the built models to predict future stock prices.
+	Attributes:
+		future_predictions_dict (dict): dictionary containing model_names as keys and the dataframes with future stock
+		price predictions as values.
+	"""
+
 	def __init__(self):
-		self.test_result_dict = {}
+		"""Constructor for the class"""
+		self.future_predictions_dict = {}
 
 	@staticmethod
 	def get_forecast_set_df(df_copy, forecast_set, ticker_symbol):
+		"""
+		Make future predictions.
+		:param df_copy: dataframe, 
+		:param forecast_set: ndarray. numpy array of predicted future stock prices.
+		:param ticker_symbol: str.
+		:return df_copy: dataframe.
+		"""
 		df_copy["{} - Forecast".format(ticker_symbol)] = np.nan
 		logger.debug("type(df.iloc[-1].name = {}".format(type(df_copy.iloc[-1].name)))
 		last_date = datetime.datetime.strptime(df_copy.iloc[-1, 0], "%Y-%m-%d") \
@@ -18,6 +33,7 @@ class Predictions(object):
 		last_unix = last_date.timestamp()
 		one_day = 86400
 		next_unix = last_unix + one_day
+		# Assign the predicted future stock prices to appropriate future dates and put them in a dataframe
 		for i in forecast_set:
 			next_date = datetime.datetime.fromtimestamp(next_unix)
 			next_unix += 86400
@@ -25,6 +41,14 @@ class Predictions(object):
 		return df_copy
 
 	def make_prediction(self, model_name, model_for_each_ticker_dict, preprocessed_data_dict, original_df_dict):
+		"""
+		Make future stock price prediction.
+		:param model_name: str, name of the model.
+		:param model_for_each_ticker_dict: dict.
+		:param preprocessed_data_dict: dict.
+		:param original_df_dict: dict.
+		:return:
+		"""
 		logger.info("----------------Predicting future prices using the {} model----------------".format(model_name))
 		forecast_df_dict = {}
 		for ticker_symbol, model in model_for_each_ticker_dict.items():
@@ -38,7 +62,15 @@ class Predictions(object):
 		return forecast_df_dict
 
 	def make_predictions(self, models_dict, preprocessed_data_dict, original_df_dict):
+		"""
+		Make future stock price predictions for all the stocks using all the models.
+		:param models_dict:
+		:param preprocessed_data_dict:
+		:param original_df_dict:
+		:return future_predictions_dict: dict. dictionary containing model name as key and dataframes containing predicted
+		future stock prices as values.
+		"""
 		for model_name, model_for_each_ticker_dict in models_dict.items():
-			self.test_result_dict[model_name] = self.make_prediction(
+			self.future_predictions_dict[model_name] = self.make_prediction(
 				model_name, model_for_each_ticker_dict, preprocessed_data_dict, original_df_dict)
-		return self.test_result_dict
+		return self.future_predictions_dict

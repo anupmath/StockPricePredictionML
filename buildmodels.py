@@ -13,22 +13,27 @@ from setuplogger import logger
 
 class BuildModels(object):
 
+	"""
+	This class builds different machine learning models for the given stock data.
+	Attributes:
+		built_models_dict (dict): dictionary containing model names as keys and built model objects as values.
+		model_scores_dict (dict): dictionary containing model names as keys and scores for those models as values.
+		saved_models_dir (str): saved models directory name
+		models_dict (dict): dictionary containing model names as keys and sklearn model objects as values.
+		parameters_dict (dict): dictionary containing model names as keys and hyperparameters dictionaries as values.
+	"""
+
 	def __init__(self):
+		"""
+		Constructor for the class.
+		"""
 		self.built_models_dict = {}
 		self.model_scores_dict = {}
 		self.saved_models_dir = "saved_models"
-		# self.models_dict = {
-		# 	"Decision Tree Regressor": DecisionTreeRegressor(random_state=0, max_depth=5),
-		# 	"Linear Regression": LinearRegression(n_jobs=-1),
-		# 	"Random Forest Regressor": RandomForestRegressor(max_depth=5, random_state=0, n_estimators=10),
-		# 	# "SVR": SVR(kernel="linear", gamma="scale")
-		# 	"SVR": SVR(kernel="linear")
-		# }
 		self.models_dict = {
 			"Decision Tree Regressor": DecisionTreeRegressor(),
 			"Linear Regression": LinearRegression(),
 			"Random Forest Regressor": RandomForestRegressor(),
-			# "SVR": SVR(kernel="linear", gamma="scale")
 			"SVR": SVR()
 		}
 		self.parameters_dict = {
@@ -39,6 +44,15 @@ class BuildModels(object):
 		}
 
 	def build_model(self, model_name, preprocessed_data_dict, force_build=False):
+		"""
+		Build machine learning models using different supervised learning regression algorithms
+		:param model_name: str, name of the model to be built.
+		:param preprocessed_data_dict: dict.
+		:param force_build: bool, if True, will force the function to build the model, even if there is a saved model
+		which was built before that is available.
+		:return model_dict: dict, dictionary containing model name as key and the built model object as value.
+		:return model_scores_dict: dictionary containing model name as key and the model training score as value.
+		"""
 		logger.info("----------------Building model using {}----------------".format(model_name))
 		model_dict = {}
 		model_scores_dict = {}
@@ -47,7 +61,9 @@ class BuildModels(object):
 			if force_build or not os.path.exists(
 					"{}/{}/{}_{}_model.pickle".format(os.getcwd(), self.saved_models_dir, model_name, ticker_symbol.replace("/", "_"))):
 				# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+				# Create a cv iterator for splitting train and test data using TimeSeriesSplit
 				tscv = TimeSeriesSplit(n_splits=5)
+				# Optimize the hyperparameters based on the cross validation scores
 				optimized_model, cv_scores = self.optimize_hyperparameters(X, y, self.parameters_dict[model_name], model_name, tscv)
 				model = make_pipeline(StandardScaler(), optimized_model)
 				X_train, X_test, y_train, y_test = self.get_train_and_test_data(X, y, cv_scores)
@@ -58,6 +74,7 @@ class BuildModels(object):
 				model = self.load_from_pickle_file(model_name, ticker_symbol, "model")
 				cv_scores = self.load_from_pickle_file(model_name, ticker_symbol, "cv_scores")
 				X_train, X_test, y_train, y_test = self.get_train_and_test_data(X, y, cv_scores)
+			# Training score
 			confidence_score = model.score(X_test, y_test)
 			logger.info("Training score for {} = {}".format(ticker_symbol, confidence_score))
 			logger.debug("Cross validation scores for {} = {}".format(ticker_symbol, cv_scores["test_score"]))
@@ -69,6 +86,13 @@ class BuildModels(object):
 		return model_dict, model_scores_dict
 
 	def build_models(self, model_names, preprocessed_data_dict):
+		"""
+		Build models for the given model names.
+		:param model_names: list, list of model names
+		:param preprocessed_data_dict: dict.
+		:return built_models_dict: dictionary containing model names as keys and built model objects as values.
+		:return model_scores_dict: dictionary containing model names as keys and training scores for those models as values.
+		"""
 		for model_name in model_names:
 			model_dict, model_scores_dict = self.build_model(model_name, preprocessed_data_dict)
 			self.built_models_dict[model_name] = model_dict
@@ -76,6 +100,10 @@ class BuildModels(object):
 		return self.built_models_dict, self.model_scores_dict
 
 	def get_built_models(self):
+		"""
+		Get the models if they are already build.
+		:return built_models_dict: dictionary containing model names as keys and built model objects as values.
+		"""
 		if self.built_models_dict:
 			return self.built_models_dict
 		else:
@@ -84,11 +112,23 @@ class BuildModels(object):
 
 	@staticmethod
 	def get_best_split_index(scores):
+		"""
+		Get the cross validation scores list index for which the score is maximum
+		:param scores: array.
+		:return best_split_index: int
+		"""
 		best_split_index_tuple = np.where(scores["test_score"] == max(scores["test_score"]))
 		best_split_index = int(best_split_index_tuple[0])
 		return best_split_index
 
 	def get_train_and_test_data(self, X, y, scores):
+		"""
+		Get the train and test data sets.
+		:param X: ndarray.
+		:param y: array
+		:param scores: array. cross validation scores.
+		:return X_train, X_test, y_train, y_test: arrays, train and test data.
+		"""
 		tscv = TimeSeriesSplit(n_splits=5)
 		X_train, X_test, y_train, y_test = [None, None, None, None]
 		split_data = []
@@ -105,10 +145,15 @@ class BuildModels(object):
 		return X_train, X_test, y_train, y_test
 
 	def optimize_hyperparameters(self, X, y, parameters_dict, model_name, cv_iterator):
-		# Parameter grid
-		# p_grid = {
-		# 	"alpha": [0.1, 0.5, 1, 1.5]
-		# }
+		"""
+		Optimize hyperparameters based on the cross validation score.
+		:param X: ndarray.
+		:param y: array.
+		:param parameters_dict: dict, dictionary containing model names as keys and list of hyperparameters as values.
+		:param model_name: str, name of the model
+		:param cv_iterator: iterator, split train and test data.
+		:return:
+		"""
 		logger.debug("Optimizing hyper-parameters")
 		model = self.models_dict[model_name]
 		# Hyperparameter optimization
@@ -117,6 +162,14 @@ class BuildModels(object):
 		return optimized_model, cv_score
 
 	def save_to_pickle_file(self, model_name, ticker_symbol, obj_to_be_saved, obj_name):
+		"""
+		Save the built model to a pickle file.
+		:param model_name: str, name of the model.
+		:param ticker_symbol: str, ticker symbol.
+		:param obj_to_be_saved: object, model object.
+		:param obj_name: str, name of the built model object.
+		:return None:
+		"""
 		logger.info("Saving {} model for {} to pickle file".format(model_name, ticker_symbol))
 		pickle_out = open("{}/{}_{}_{}.pickle".format(
 			self.saved_models_dir, model_name, ticker_symbol.replace("/", "_"), obj_name), "wb")
@@ -124,6 +177,13 @@ class BuildModels(object):
 		pickle_out.close()
 
 	def load_from_pickle_file(self, model_name, ticker_symbol, obj_name):
+		"""
+		Load the built model from a pickle file.
+		:param model_name: str, name of the model.
+		:param ticker_symbol: str, ticker symbol.
+		:param obj_name: str, name of the built model object.
+		:return loaded_obj: object, model object.
+		"""
 		logger.info("Loading {} model for {} from pickle file".format(model_name, ticker_symbol))
 		pickle_in = open("{}/{}_{}_{}.pickle".format(
 			self.saved_models_dir, model_name, ticker_symbol.replace("/", "_"), obj_name), "rb")
