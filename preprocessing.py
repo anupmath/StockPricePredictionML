@@ -16,7 +16,7 @@ class PreprocessData(object):
 		ticker_symbol_list (list): list of stock ticker symbols
 	"""
 
-	def __init__(self):
+	def __init__(self, **kwargs):
 		"""
 		Constructor for the class.
 		"""
@@ -24,6 +24,7 @@ class PreprocessData(object):
 		self.original_df_dict = {}
 		self.preprocessed_data_dict = {}
 		self.ticker_symbol_list = []
+		self.future_prediction_pcnt = kwargs["future_prediction_pcnt"]
 
 	def get_df_for_each_ticker(self, df):
 		"""
@@ -95,14 +96,14 @@ class PreprocessData(object):
 			feature_list = self.get_feature_list(ticker_domain)
 			logger.debug("Feature list for {} = {}".format(ticker_symbol, feature_list))
 			preprocessed_feature_list = list(map(
-				lambda x, y: "{} - {}".format(x, y), [ticker_symbol] * len(feature_list), feature_list))
+				lambda x, x1: "{} - {}".format(x, x1), [ticker_symbol] * len(feature_list), feature_list))
 			preprocessed_df = original_df[preprocessed_feature_list].copy(deep=True)
 			if ticker_domain in ["WIKI"]:
 				# Compute high to low and open to close stock price percentage values and add them to feature list
 				preprocessed_df = self.get_high_to_low_pcnt_change(preprocessed_df, ticker_symbol)
 				preprocessed_df = self.get_open_to_close_pcnt_change(preprocessed_df, ticker_symbol)
 				preprocessed_feature_list = list(map(
-					lambda x, y: "{} - {}".format(x, y), [ticker_symbol] * len(useful_features), useful_features))
+					lambda x, x1: "{} - {}".format(x, x1), [ticker_symbol] * len(useful_features), useful_features))
 				preprocessed_df = preprocessed_df[preprocessed_feature_list]
 			# Forecast column labels depending on the domain
 			forecast_col_labels = {
@@ -110,13 +111,12 @@ class PreprocessData(object):
 				"BCB": "{} - Value".format(ticker_symbol),
 				"NASDAQOMX": "{} - Index Value".format(ticker_symbol)
 			}
-			# df.fillna(value=-99999, inplace=True)
 			preprocessed_df.dropna(inplace=True)
 			# Number of future data points to be predicted.
-			forecast_out = int(math.ceil(0.01 * len(preprocessed_df)))
+			forecast_out = int(math.ceil(self.future_prediction_pcnt * 0.01 * len(preprocessed_df)))
 			preprocessed_df["label"] = preprocessed_df[forecast_col_labels[ticker_domain]].shift(-forecast_out)
 			X = np.array(preprocessed_df.drop(["label"], 1))
-			X_forecast = X[-forecast_out:]
+			X_forecast = X
 			X = X[:-forecast_out]
 			y = np.array(preprocessed_df["label"])
 			y = y[:-forecast_out]

@@ -1,3 +1,4 @@
+import math
 from matplotlib import style
 import matplotlib.pyplot as plt
 import os
@@ -19,10 +20,15 @@ class StockPricePrediction(object):
     """Constructor for the class"""
     pass
 
-  def plot_forecast(self, forecast_df_dict):
+  def plot_forecast(self, forecast_df_dict, original_df_dict, future_prediction_pcnt=1):
     """
     Plots the actual data and the forecast data in the dataframe.
-    :param forecast_df_dict: Dataframe containing actual data and forecast data.
+    :param forecast_df_dict: dict, dictionary containing model names as keys and dictionaries containing
+     ticker symbols as keys and preprocessed dataframes containing forecast data as values.
+    :param original_df_dict: dict, dictionary containing ticker symbols as keys and original dataframes as values.
+    :param future_prediction_pcnt: float, Number of dates/data points into the future for which the stock price is to
+    be predicted as a percentage of the number of dates/data points for which historical data which is already
+    available
     :return: None
     """
     current_dir = os.getcwd()
@@ -31,15 +37,21 @@ class StockPricePrediction(object):
     for model_name, df_dict in forecast_df_dict.items():
       logger.info("----------------Plotting stock prices for {} model----------------".format(model_name))
       for ticker_symbol, df in df_dict.items():
+        ticker_domain = ticker_symbol.split("/")[0]
+        original_df = original_df_dict[ticker_symbol].dropna().reset_index()
+        df = df.reset_index()
         forecast_col_labels = {
           "WIKI": "{} - Adj. Close".format(ticker_symbol),
           "BCB": "{} - Value".format(ticker_symbol),
           "NASDAQOMX": "{} - Index Value".format(ticker_symbol)
         }
         logger.info("----------------Plotting stock prices for {}".format(ticker_symbol))
-        style.use("ggplot")
-        df.plot(x="Date", y=[forecast_col_labels[ticker_symbol.split("/")[0]], "{} - Forecast".format(ticker_symbol)],
-                color=['g', 'b'])
+        # Number of future data points to be predicted.
+        forecast_out = int(math.ceil(future_prediction_pcnt * 0.01 * len(df)))
+        original_df["Date"] = original_df["Date"].shift(-forecast_out)
+        original_df = original_df.iloc[0: (len(df) - forecast_out), :]
+        df["{} - Forecast".format(ticker_symbol)].plot(color='b')
+        original_df[forecast_col_labels[ticker_domain]].plot(color='g')
         plt.legend(loc="best")
         plt.xlabel("Date")
         plt.ylabel("Price")
@@ -58,7 +70,10 @@ class StockPricePrediction(object):
     logger.info("------------------Started Stock Price Prediction-----------------")
     # Create instances of all the classes used for stock prediction
     get_data = GetData(api_key=sys.argv[1])
-    preprocess_data = PreprocessData()
+    # Number of dates/data points into the future for which the stock price is to be predicted as a percentage of the
+    # number of dates/data points for which historical data which is already available
+    future_prediction_pcnt = 1
+    preprocess_data = PreprocessData(future_prediction_pcnt=future_prediction_pcnt)
     build_models = BuildModels()
     forecast_prices = Predictions()
     # Get data from quandl.
@@ -66,11 +81,12 @@ class StockPricePrediction(object):
     # Preprocess data
     preprocessed_data_dict, original_df_dict = preprocess_data.preprocess_data(df, get_data.stock_ticker_list)
     models_list = ["Linear Regression", "Decision Tree Regressor", "Random Forest Regressor"]
+    # models_list = ["Random Forest Regressor"]
     # Build models
-    models_dict, model_scores_dict = build_models.build_models(models_list, preprocessed_data_dict)
+    models_dict, model_scores_dict = build_models.build_models(models_list, preprocessed_data_dict, force_build=False)
     # Predict future stock prices
     forecast_df_dict = forecast_prices.make_predictions(models_dict, preprocessed_data_dict, original_df_dict)
-    self.plot_forecast(forecast_df_dict)
+    self.plot_forecast(forecast_df_dict, original_df_dict, future_prediction_pcnt)
 
 
 if __name__ == "__main__":
