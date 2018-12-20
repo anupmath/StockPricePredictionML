@@ -11,3 +11,4 @@ env/
 *.log
 # Plots
 stock_price_plots/*.png
+saved_models
