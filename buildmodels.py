@@ -36,9 +36,9 @@ class BuildModels(object):
 			"SVR": SVR()
 		}
 		self.parameters_dict = {
-			"Decision Tree Regressor": {"max_depth": [1, 2, 5]},
+			"Decision Tree Regressor": {"max_depth": [200]},
 			"Linear Regression": {"n_jobs": [None, -1]},
-			"Random Forest Regressor": {"max_depth": [2, 5], "n_estimators": [10, 100, 200]},
+			"Random Forest Regressor": {"max_depth": [200], "n_estimators": [100]},
 			"SVR": {"kernel": ["rbf", "linear"], "degree": [3], "gamma": ["scale"]}
 		}
 
@@ -57,26 +57,25 @@ class BuildModels(object):
 		model_scores_dict = {}
 		for ticker_symbol, preprocessed_data in preprocessed_data_dict.items():
 			[X, X_forecast, y] = preprocessed_data
+			tscv = TimeSeriesSplit(n_splits=5)
 			if force_build or not os.path.exists(
 					"{}/{}/{}_{}_model.pickle".format(os.getcwd(), self.saved_models_dir, model_name,
 																						ticker_symbol.replace("/", "_"))):
 				# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 				# Create a cv iterator for splitting train and test data using TimeSeriesSplit
-				tscv = TimeSeriesSplit(n_splits=5)
 				# Optimize the hyperparameters based on the cross validation scores
-				optimized_model, cv_scores = self.optimize_hyperparameters(X, y, self.parameters_dict[model_name], model_name,
-																																	 tscv)
+				optimized_model = self.optimize_hyperparameters(model_name, tscv)
 				model = make_pipeline(StandardScaler(), optimized_model)
-				X_train, X_test, y_train, y_test = self.get_train_and_test_data(X, y)
+				X_train, X_test, y_train, y_test = self.get_train_and_test_data(X, y, tscv)
 				model.fit(X_train, y_train)
 				self.save_to_pickle_file(model_name, ticker_symbol, model, "model")
-				self.save_to_pickle_file(model_name, ticker_symbol, cv_scores, "cv_scores")
 			else:
 				model = self.load_from_pickle_file(model_name, ticker_symbol, "model")
-				cv_scores = self.load_from_pickle_file(model_name, ticker_symbol, "cv_scores")
-				X_train, X_test, y_train, y_test = self.get_train_and_test_data(X, y)
+				X_train, X_test, y_train, y_test = self.get_train_and_test_data(X, y, tscv)
 			# Training score
 			confidence_score = model.score(X_test, y_test)
+			# Cross validation
+			cv_scores = cross_validate(model, X=X, y=y, cv=tscv)
 			logger.info("Training score for {} = {}".format(ticker_symbol, confidence_score))
 			logger.debug("Cross validation scores for {} = {}".format(ticker_symbol, cv_scores["test_score"]))
 			logger.info("Cross validation score for {} = {} +/- {}".format(
@@ -112,14 +111,14 @@ class BuildModels(object):
 			logger.info("No models found. Run build_models first and then call this method.")
 			exit(1)
 
-	def get_train_and_test_data(self, X, y):
+	def get_train_and_test_data(self, X, y, tscv):
 		"""
 		Get the train and test data sets.
 		:param X: ndarray.
 		:param y: array
+		:param tscv: iterator, TimeSeriesSplit iterator
 		:return X_train, X_test, y_train, y_test: arrays, train and test data.
 		"""
-		tscv = TimeSeriesSplit(n_splits=5)
 		split_data = []
 		for train_indices, test_indices in tscv.split(X):
 			X_train, X_test = X[train_indices], X[test_indices]
@@ -129,25 +128,22 @@ class BuildModels(object):
 		# series data
 		best_split_index = -1
 		X_train, X_test, y_train, y_test = split_data[best_split_index]
-		logger.debug("Optimized train_data size = {}".format(len(X_train) * 100 / len(X)))
+		logger.debug("Last train_data size = {}".format(len(X_train) * 100 / len(X)))
 		return X_train, X_test, y_train, y_test
 
-	def optimize_hyperparameters(self, X, y, parameters_dict, model_name, cv_iterator):
+	def optimize_hyperparameters(self, model_name, cv_iterator):
 		"""
 		Optimize hyperparameters based on the cross validation score.
-		:param X: ndarray.
-		:param y: array.
-		:param parameters_dict: dict, dictionary containing model names as keys and list of hyperparameters as values.
 		:param model_name: str, name of the model
 		:param cv_iterator: iterator, split train and test data.
 		:return:
 		"""
 		logger.debug("Optimizing hyper-parameters")
+		parameters_dict = self.parameters_dict[model_name]
 		model = self.models_dict[model_name]
 		# Hyperparameter optimization
 		optimized_model = GridSearchCV(estimator=model, param_grid=parameters_dict, cv=cv_iterator)
-		cv_score = cross_validate(optimized_model, X=X, y=y, cv=cv_iterator)
-		return optimized_model, cv_score
+		return optimized_model
 
 	def save_to_pickle_file(self, model_name, ticker_symbol, obj_to_be_saved, obj_name):
 		"""
