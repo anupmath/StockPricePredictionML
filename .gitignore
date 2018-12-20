@@ -12,3 +12,4 @@ env/
 # Plots
 stock_price_plots/*.png
 saved_models
+learning_curve_plots

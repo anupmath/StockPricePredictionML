@@ -26,6 +26,7 @@ class Predictions(object):
 		logger.info("----------------Predicting future prices using the {} model----------------".format(model_name))
 		forecast_df_dict = {}
 		for ticker_symbol, model in model_for_each_ticker_dict.items():
+			ticker_symbol = ticker_symbol.replace("_", "/")
 			logger.info("Predicting future prices for {}".format(ticker_symbol))
 			df_copy = original_df_dict[ticker_symbol].copy(deep=True)
 			df_copy.dropna(inplace=True)

@@ -1,8 +1,10 @@
+import matplotlib.pyplot as plt
+import numpy as np
 import os
 import pickle
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import cross_validate, GridSearchCV, TimeSeriesSplit
+from sklearn.model_selection import cross_validate, GridSearchCV, learning_curve, TimeSeriesSplit
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVR
@@ -55,12 +57,13 @@ class BuildModels(object):
 		logger.info("----------------Building model using {}----------------".format(model_name))
 		model_dict = {}
 		model_scores_dict = {}
+		curr_dir = os.getcwd()
 		for ticker_symbol, preprocessed_data in preprocessed_data_dict.items():
 			[X, X_forecast, y] = preprocessed_data
 			tscv = TimeSeriesSplit(n_splits=5)
+			ticker_symbol = ticker_symbol.replace("/", "_")
 			if force_build or not os.path.exists(
-					"{}/{}/{}_{}_model.pickle".format(os.getcwd(), self.saved_models_dir, model_name,
-																						ticker_symbol.replace("/", "_"))):
+					"{}/{}/{}_{}_model.pickle".format(os.getcwd(), self.saved_models_dir, model_name,	ticker_symbol)):
 				# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 				# Create a cv iterator for splitting train and test data using TimeSeriesSplit
 				# Optimize the hyperparameters based on the cross validation scores
@@ -74,6 +77,11 @@ class BuildModels(object):
 				X_train, X_test, y_train, y_test = self.get_train_and_test_data(X, y, tscv)
 			# Training score
 			confidence_score = model.score(X_test, y_test)
+			# Plot learning curves
+			title = "{}_{}_Learning Curves".format(model_name, ticker_symbol)
+			save_file_path = "{}/learning_curve_plots/{}_{}.png".format(curr_dir, model_name, ticker_symbol)
+			# Create the CV iterator
+			self.plot_learning_curve(model, title, X, y, save_file_path, cv=tscv)
 			# Cross validation
 			cv_scores = cross_validate(model, X=X, y=y, cv=tscv)
 			logger.info("Training score for {} = {}".format(ticker_symbol, confidence_score))
@@ -131,6 +139,20 @@ class BuildModels(object):
 		logger.debug("Last train_data size = {}".format(len(X_train) * 100 / len(X)))
 		return X_train, X_test, y_train, y_test
 
+	def load_from_pickle_file(self, model_name, ticker_symbol, obj_name):
+		"""
+		Load the built model from a pickle file.
+		:param model_name: str, name of the model.
+		:param ticker_symbol: str, ticker symbol.
+		:param obj_name: str, name of the built model object.
+		:return loaded_obj: object, model object.
+		"""
+		logger.info("Loading {} model for {} from pickle file".format(model_name, ticker_symbol))
+		pickle_in = open("{}/{}_{}_{}.pickle".format(
+			self.saved_models_dir, model_name, ticker_symbol, obj_name), "rb")
+		loaded_obj = pickle.load(pickle_in)
+		return loaded_obj
+
 	def optimize_hyperparameters(self, model_name, cv_iterator):
 		"""
 		Optimize hyperparameters based on the cross validation score.
@@ -145,6 +167,80 @@ class BuildModels(object):
 		optimized_model = GridSearchCV(estimator=model, param_grid=parameters_dict, cv=cv_iterator)
 		return optimized_model
 
+	def plot_learning_curve(self, estimator, title, X, y, save_file_path, ylim=None, cv=None,
+													train_sizes=np.linspace(.1, 1.0, 5)):
+		"""
+		Generate a simple plot of the test and training learning curve.
+
+		Parameters
+		----------
+		estimator : object type that implements the "fit" and "predict" methods
+				An object of that type which is cloned for each validation.
+
+		title : string
+				Title for the chart.
+
+		X : array-like, shape (n_samples, n_features)
+				Training vector, where n_samples is the number of samples and
+				n_features is the number of features.
+
+		y : array-like, shape (n_samples) or (n_samples, n_features), optional
+				Target relative to X for classification or regression;
+				None for unsupervised learning.
+
+		ylim : tuple, shape (ymin, ymax), optional
+				Defines minimum and maximum yvalues plotted.
+
+		cv : int, cross-validation generator or an iterable, optional
+				Determines the cross-validation splitting strategy.
+				Possible inputs for cv are:
+					- None, to use the default 3-fold cross-validation,
+					- integer, to specify the number of folds.
+					- An object to be used as a cross-validation generator.
+					- An iterable yielding train/test splits.
+
+				For integer/None inputs, if ``y`` is binary or multiclass,
+				:class:`StratifiedKFold` used. If the estimator is not a classifier
+				or if ``y`` is neither binary nor multiclass, :class:`KFold` is used.
+
+				Refer :ref:`User Guide <cross_validation>` for the various
+				cross-validators that can be used here.
+		train_sizes : array-like, shape (n_ticks,), dtype float or int
+        Relative or absolute numbers of training examples that will be used to
+        generate the learning curve. If the dtype is float, it is regarded as a
+        fraction of the maximum size of the training set (that is determined
+        by the selected validation method), i.e. it has to be within (0, 1].
+        Otherwise it is interpreted as absolute sizes of the training sets.
+        Note that for classification the number of samples usually have to
+        be big enough to contain at least one sample from each class.
+        (default: np.linspace(0.1, 1.0, 5))
+		"""
+		logger.info("Plotting {}".format(title))
+		plt.figure()
+		plt.title(title)
+		if ylim is not None:
+			plt.ylim(*ylim)
+		plt.xlabel("Training examples")
+		plt.ylabel("Score")
+		train_sizes, train_scores, test_scores = learning_curve(
+			estimator, X, y, cv=cv, train_sizes=train_sizes)
+		train_scores_mean = np.mean(train_scores, axis=1)
+		train_scores_std = np.std(train_scores, axis=1)
+		test_scores_mean = np.mean(test_scores, axis=1)
+		test_scores_std = np.std(test_scores, axis=1)
+		plt.grid()
+
+		plt.fill_between(train_sizes, train_scores_mean - train_scores_std, train_scores_mean + train_scores_std, alpha=0.1,
+										 color="r")
+		plt.fill_between(train_sizes, test_scores_mean - test_scores_std, test_scores_mean + test_scores_std, alpha=0.1,
+										 color="g")
+		plt.plot(train_sizes, train_scores_mean, 'o-', color="r", label="Training score")
+		plt.plot(train_sizes, test_scores_mean, 'o-', color="g", label="Cross-validation score")
+
+		plt.legend(loc="best")
+		plt.savefig("{}".format(save_file_path))
+		plt.close()
+
 	def save_to_pickle_file(self, model_name, ticker_symbol, obj_to_be_saved, obj_name):
 		"""
 		Save the built model to a pickle file.
@@ -156,20 +252,6 @@ class BuildModels(object):
 		"""
 		logger.info("Saving {} model for {} to pickle file".format(model_name, ticker_symbol))
 		pickle_out = open("{}/{}_{}_{}.pickle".format(
-			self.saved_models_dir, model_name, ticker_symbol.replace("/", "_"), obj_name), "wb")
+			self.saved_models_dir, model_name, ticker_symbol, obj_name), "wb")
 		pickle.dump(obj_to_be_saved, pickle_out)
 		pickle_out.close()
-
-	def load_from_pickle_file(self, model_name, ticker_symbol, obj_name):
-		"""
-		Load the built model from a pickle file.
-		:param model_name: str, name of the model.
-		:param ticker_symbol: str, ticker symbol.
-		:param obj_name: str, name of the built model object.
-		:return loaded_obj: object, model object.
-		"""
-		logger.info("Loading {} model for {} from pickle file".format(model_name, ticker_symbol))
-		pickle_in = open("{}/{}_{}_{}.pickle".format(
-			self.saved_models_dir, model_name, ticker_symbol.replace("/", "_"), obj_name), "rb")
-		loaded_obj = pickle.load(pickle_in)
-		return loaded_obj
