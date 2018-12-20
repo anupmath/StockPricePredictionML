@@ -112,11 +112,14 @@ class PreprocessData(object):
 				"NASDAQOMX": "{} - Index Value".format(ticker_symbol)
 			}
 			preprocessed_df.dropna(inplace=True)
+			preprocessed_df["label"] = preprocessed_df[forecast_col_labels[ticker_domain]]
+			X_forecast = np.array(preprocessed_df.drop(["label"], 1))
 			# Number of future data points to be predicted.
 			forecast_out = int(math.ceil(self.future_prediction_pcnt * 0.01 * len(preprocessed_df)))
-			preprocessed_df["label"] = preprocessed_df[forecast_col_labels[ticker_domain]].shift(-forecast_out)
+			preprocessed_df = preprocessed_df.iloc[0: int((1 - self.future_prediction_pcnt * 0.01) * len(preprocessed_df)), :]
+			preprocessed_df["label"] = preprocessed_df["label"].shift(-forecast_out)
+			preprocessed_df.dropna(inplace=True)
 			X = np.array(preprocessed_df.drop(["label"], 1))
-			X_forecast = X
 			X = X[:-forecast_out]
 			y = np.array(preprocessed_df["label"])
 			y = y[:-forecast_out]

@@ -49,7 +49,6 @@ class StockPricePrediction(object):
         # Number of future data points to be predicted.
         forecast_out = int(math.ceil(future_prediction_pcnt * 0.01 * len(df)))
         original_df["Date"] = original_df["Date"].shift(-forecast_out)
-        original_df = original_df.iloc[0: (len(df) - forecast_out), :]
         df["{} - Forecast".format(ticker_symbol)].plot(color='b')
         original_df[forecast_col_labels[ticker_domain]].plot(color='g')
         plt.legend(loc="best")
@@ -81,7 +80,6 @@ class StockPricePrediction(object):
     # Preprocess data
     preprocessed_data_dict, original_df_dict = preprocess_data.preprocess_data(df, get_data.stock_ticker_list)
     models_list = ["Linear Regression", "Decision Tree Regressor", "Random Forest Regressor"]
-    # models_list = ["Random Forest Regressor"]
     # Build models
     models_dict, model_scores_dict = build_models.build_models(models_list, preprocessed_data_dict, force_build=False)
     # Predict future stock prices
