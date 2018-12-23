@@ -27,6 +27,9 @@ Predict future stock prices using the historical stock data by applying differen
 
 ### Project setup instructions
 
+```
 • pip3 install -r requirements.txt
 
 • python3 stockpriceprediction.py <quandl-api-key>
+```
+If you do not want to pull new data from quandl, pass a random string (eg. a) instead of the <quandl-api-key>. If you want to pull new data, then you have to creata a free account on quandl and use your api key for quandl.
