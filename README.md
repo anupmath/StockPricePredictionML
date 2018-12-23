@@ -11,11 +11,11 @@ Predict future stock prices using the historical stock data by applying differen
   
 • Preprocess the acquired stock data: Cleaning of data based on model requirement.
 
-• Extract relevant features: Open, close, high, low, volume, market cap, P/E ratio etc.
+• Extract relevant features: Open, close, high, low, volume etc.
 
 • Build machine learning models: Build machine learning models using Linear Regression, SVM, Decision Trees etc. 
 
-• Validate the models: Validate the models using RMSE, AUC, etc.
+• Validate the models: Evaluate the models by finding out the cross validation scores.
 
 • Predict future stock prices using the models.
 
