@@ -58,12 +58,14 @@ class BuildModels(object):
 		model_dict = {}
 		model_scores_dict = {}
 		curr_dir = os.getcwd()
+		saved_models_path = "{}/{}".format(os.getcwd(), self.saved_models_dir)
+		os.mkdir(saved_models_path) if not os.path.exists(saved_models_path) else None
 		for ticker_symbol, preprocessed_data in preprocessed_data_dict.items():
 			[X, X_forecast, y] = preprocessed_data
 			tscv = TimeSeriesSplit(n_splits=5)
 			ticker_symbol = ticker_symbol.replace("/", "_")
 			if force_build or not os.path.exists(
-					"{}/{}/{}_{}_model.pickle".format(os.getcwd(), self.saved_models_dir, model_name,	ticker_symbol)):
+					"{}/{}_{}_model.pickle".format(saved_models_path, model_name,	ticker_symbol)):
 				# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 				# Create a cv iterator for splitting train and test data using TimeSeriesSplit
 				# Optimize the hyperparameters based on the cross validation scores
