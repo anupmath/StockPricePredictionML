@@ -18,7 +18,10 @@ class StockPricePrediction(object):
 
   def __init__(self):
     """Constructor for the class"""
-    pass
+    self.current_dir = os.getcwd()
+    self.stock_price_plots_dir = "{}/stock_price_plots/".format(os.getcwd())
+    os.mkdir("{}/stock_price_plots".format(self.current_dir)) if not os.path.exists("{}/stock_price_plots".format(
+      self.current_dir)) else None
 
   def plot_forecast(self, forecast_df_dict, original_df_dict, future_prediction_pcnt=1):
     """
@@ -31,9 +34,6 @@ class StockPricePrediction(object):
     available
     :return: None
     """
-    current_dir = os.getcwd()
-    os.mkdir("{}/stock_price_plots".format(current_dir)) if not os.path.exists("{}/stock_price_plots".format(
-      current_dir)) else None
     for model_name, df_dict in forecast_df_dict.items():
       logger.info("----------------Plotting stock prices for {} model----------------".format(model_name))
       for ticker_symbol, df in df_dict.items():
@@ -56,7 +56,7 @@ class StockPricePrediction(object):
         plt.ylabel("Price")
         plt.title("Forecast for {} model for {}".format(model_name, ticker_symbol))
         # fig = plt.figure()
-        plt.savefig("{}/stock_price_plots/{}_{}.png".format(current_dir, model_name, ticker_symbol.replace("/", "_")))
+        plt.savefig("{}/{}_{}.png".format(self.stock_price_plots_dir, model_name, ticker_symbol.replace("/", "_")))
         plt.clf()
         plt.close()
 
