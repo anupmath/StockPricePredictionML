@@ -2,7 +2,7 @@ import json
 import os
 import pandas as pd
 import quandl
-from setuplogger import logger
+from src.setuplogger import logger
 
 
 class GetData(object):

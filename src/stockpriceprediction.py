@@ -3,11 +3,11 @@ from matplotlib import style
 import matplotlib.pyplot as plt
 import os
 import sys
-from buildmodels import BuildModels
-from getdata import GetData
-from preprocessing import PreprocessData
-from setuplogger import logger
-from predictions import Predictions
+from src.buildmodels import BuildModels
+from src.getdata import GetData
+from src.preprocessing import PreprocessData
+from src.setuplogger import logger
+from src.predictions import Predictions
 
 
 class StockPricePrediction(object):

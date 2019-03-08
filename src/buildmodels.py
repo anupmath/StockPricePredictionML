@@ -9,7 +9,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVR
 from sklearn.tree import DecisionTreeRegressor
-from setuplogger import logger
+from src.setuplogger import logger
 
 
 class BuildModels(object):

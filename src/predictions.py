@@ -1,4 +1,4 @@
-from setuplogger import logger
+from src.setuplogger import logger
 
 
 class Predictions(object):

@@ -1,8 +1,8 @@
 import math
 import numpy as np
 import pandas as pd
-from getdata import GetData
-from setuplogger import logger
+from src.getdata import GetData
+from src.setuplogger import logger
 
 
 class PreprocessData(object):
