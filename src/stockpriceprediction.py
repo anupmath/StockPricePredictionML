@@ -68,18 +68,21 @@ class StockPricePrediction(object):
     """
     logger.info("------------------Started Stock Price Prediction-----------------")
     # Create instances of all the classes used for stock prediction
-    get_data = GetData(api_key=sys.argv[1])
+    get_data = GetData(api_key=sys.argv[1], stock_data_path="src/stockdata/stockdata.csv",
+                       stock_data_info_path="src/stockdata/stockdatainfo.json")
     # Number of dates/data points into the future for which the stock price is to be predicted as a percentage of the
     # number of dates/data points for which historical data which is already available
     future_prediction_pcnt = 1
-    preprocess_data = PreprocessData(future_prediction_pcnt=future_prediction_pcnt)
+    preprocess_data = PreprocessData(future_prediction_pcnt=future_prediction_pcnt,
+                                     stock_data_info_path="src/stockdata/stockdatainfo.json")
     build_models = BuildModels()
     forecast_prices = Predictions()
     # Get data from quandl.
     df = get_data.get_stock_data(update_data=False)
     # Preprocess data
     preprocessed_data_dict, original_df_dict = preprocess_data.preprocess_data(df, get_data.stock_ticker_list)
-    models_list = ["Linear Regression", "Decision Tree Regressor", "Random Forest Regressor"]
+    # models_list = ["Linear Regression", "Decision Tree Regressor", "Random Forest Regressor"]
+    models_list = ["Linear Regression"]
     # Build models
     models_dict, model_scores_dict = build_models.build_models(models_list, preprocessed_data_dict, force_build=False)
     # Predict future stock prices

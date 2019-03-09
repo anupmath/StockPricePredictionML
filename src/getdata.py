@@ -21,8 +21,8 @@ class GetData(object):
     :param kwargs: dictionary containing "api_key" as key and the quandl api key as the value.
     """
     quandl.ApiConfig.api_key = kwargs["api_key"]
-    self.stock_data_path = "stockdata/stockdata.csv"
-    self.stock_data_info = self.get_stock_data_info()
+    self.stock_data_path = kwargs["stock_data_path"]
+    self.stock_data_info = self.get_stock_data_info(kwargs["stock_data_info_path"])
     self._stock_ticker_list = self.get_stock_ticker_list()
 
   def get_stock_data(self, update_data=False):
@@ -48,12 +48,12 @@ class GetData(object):
     return df
 
   @staticmethod
-  def get_stock_data_info():
+  def get_stock_data_info(json_file_path):
     """
     Parse the stockdata/stockdatainfo.json file and store it in a dictionary
     :return stock_data_info: dict
     """
-    with open("stockdata/stockdatainfo.json", 'r') as ticker_list_f:
+    with open("{}".format(json_file_path), 'r') as ticker_list_f:
       ticker_list_str = ticker_list_f.read()
       stock_data_info = json.loads(ticker_list_str)
     return stock_data_info

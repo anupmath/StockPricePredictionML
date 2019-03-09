@@ -20,7 +20,7 @@ class PreprocessData(object):
 		"""
 		Constructor for the class.
 		"""
-		self.stock_data_info = GetData.get_stock_data_info()
+		self.stock_data_info = GetData.get_stock_data_info(kwargs["stock_data_info_path"])
 		self.original_df_dict = {}
 		self.preprocessed_data_dict = {}
 		self.ticker_symbol_list = []

@@ -1,0 +1,11 @@
+{
+  "stock_tickers": {
+    "WIKI": ["EFGH", "ABCD", "IJKL"],
+    "BCB": ["1234", "BBBB", "AAAA"],
+    "NASDAQOMX": ["CCCC", "BBBB"]},
+  "features_list": {
+    "WIKI":  ["Open", "High", "Low", "Close", "Volume"],
+    "BCB": ["Index Value"],
+    "NASDAQOMX": ["Index Value"]
+  }
+}
